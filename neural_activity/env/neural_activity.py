@@ -30,7 +30,8 @@ class NeuralActivityEnv:
         self,
         batch_size: int = 100,
         dataset_path: Optional[str] = None,
-        dataset: Optional[Dict[str, Any]] = None
+        dataset: Optional[Dict[str, Any]] = None,
+        latent_dim: int = 4
     ):
         """
         Initialize the neural activity environment
@@ -39,8 +40,10 @@ class NeuralActivityEnv:
             batch_size: Number of trials to use for evaluation
             dataset_path: Optional path to custom dataset .npz file
             dataset: Optional pre-loaded dataset dictionary with 'z_test' key
+            latent_dim: Dimension of the latent embedding space (default: 4)
         """
         self.batch_size = batch_size
+        self.latent_dim = latent_dim
         self.current_batch = 0
         self.rng = np.random.RandomState()
 
@@ -105,7 +108,7 @@ class NeuralActivityEnv:
         Returns:
             Dictionary with:
                 - X: Neural activity data for encoding (n_trials, n_neurons)
-                - Z: Latent representations to decode for generation (n_trials, n_neurons)
+                - Z: Random latent codes to decode for generation (n_trials, latent_dim)
             Returns None when all batches are complete
         """
         if self.current_batch >= self.num_batches:
@@ -126,11 +129,16 @@ class NeuralActivityEnv:
 
         # For encode/decode workflow:
         # X = neural activity to encode -> Z_pred -> Y_pred (reconstruction)
-        # Z = latent codes to decode -> Y_gen (generation)
-        # For simplicity, we use the same data for both tasks
+        # Z = random latent codes to decode -> Y_gen (generation)
+
+        # Generate random latent codes from standard normal distribution
+        # Shape: (n_trials, latent_dim)
+        n_trials = test_data.shape[0]
+        Z_latents = self.rng.randn(n_trials, self.latent_dim).astype(np.float32)
+
         return {
-            'X': test_data,  # Neural activity to encode/decode
-            'Z': test_data   # Latent representations to decode for generation
+            'X': test_data,      # Neural activity to encode (n_trials, n_neurons)
+            'Z': Z_latents       # Random latent codes to decode (n_trials, latent_dim=4)
         }
 
     def evaluate(self, Z_pred: np.ndarray, Y_pred: np.ndarray, Y_gen: np.ndarray, d: int = 10) -> tuple:
