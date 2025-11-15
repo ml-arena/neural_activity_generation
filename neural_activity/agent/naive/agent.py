@@ -27,6 +27,7 @@ class Agent:
         self.n_neurons = None
         self.encode_matrix = None
         self.decode_matrix = None
+        self.original_shape = None  # Store original shape for reshaping decode output
 
     def reset(self):
         """Reset agent state"""
@@ -36,6 +37,7 @@ class Agent:
         self.n_neurons = None
         self.encode_matrix = None
         self.decode_matrix = None
+        self.original_shape = None
 
     def _initialize_matrices(self, n_neurons):
         """Initialize random projection matrices"""
@@ -53,12 +55,15 @@ class Agent:
         For the naive agent, this uses a simple random linear projection
 
         Args:
-            X: Neural activity data (n_trials, n_neurons)
+            X: Neural activity data (n_trials, n_neurons) or (n_trials, n_time, n_neurons)
 
         Returns:
             Latent embeddings (n_trials, 4)
         """
         X = np.asarray(X)
+
+        # Store original shape for decode reshaping
+        self.original_shape = X.shape
 
         # Flatten if needed (handle temporal data)
         if len(X.shape) > 2:
@@ -82,19 +87,25 @@ class Agent:
             z: Latent embeddings (n_samples, 4)
 
         Returns:
-            Reconstructed neural activity (n_samples, n_neurons)
+            Reconstructed neural activity - shape matches original input to encode()
+            (n_samples, n_neurons) or (n_samples, n_time, n_neurons)
         """
         z = np.asarray(z)
 
         # Need to initialize if decode is called before encode
         if self.decode_matrix is None:
             # Use a default neuron count (will be set properly on first encode)
-            self._initialize_matrices(40)  # Default for this dataset
+            self._initialize_matrices(105000)  # Default for 200 timesteps × 525 neurons
 
         # Project back to neural space
         X_reconstructed = z @ self.decode_matrix
 
         # Ensure non-negative (neural firing rates)
         X_reconstructed = np.maximum(X_reconstructed, 0)
+
+        # Reshape back to original shape if we have it
+        if self.original_shape is not None and len(self.original_shape) > 2:
+            batch_size = z.shape[0]
+            X_reconstructed = X_reconstructed.reshape(batch_size, *self.original_shape[1:])
 
         return X_reconstructed.astype(np.float32)
