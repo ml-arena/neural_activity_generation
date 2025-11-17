@@ -360,19 +360,26 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 if __name__ == "__main__":
     X = np.load("../data/neural_data.npz")
     print(X["z_test"].shape)
-    z1 = X["z_test"][:64]
-    z2 = X["z_test"][64:128]
+
+    # Use equal-sized batches
+    batch_size = 100  # Ensure we have enough data for both batches
+    z1 = X["z_test"][:batch_size]
+    z2 = X["z_test"][batch_size:2*batch_size]
+
+    batch_size = X["z_test"].shape[0] #100  # Ensure we have enough data for both batches
+    z1 = X["z_test"] #[:batch_size]
+    z2 = X["z_test"] #[batch_size:2*batch_size]
 
     z2_time_shuffle = z2[:, np.random.permutation(z2.shape[1])]
     z2_neuro_shuffle = z2[:, :, np.random.permutation(z2.shape[2])]
 
-    r2_ref, *_ = fun_trial_matched_metrics(z1, z2, 64, biophysical_representation)
-    r2_time_shuffle, *_ = fun_trial_matched_metrics(z2_time_shuffle, z2, 64, biophysical_representation)
-    r2_neuro_suffle, *_ = fun_trial_matched_metrics(z2_neuro_shuffle, z2, 64, biophysical_representation)
+    r2_ref, *_ = fun_trial_matched_metrics(z1, z2, batch_size, biophysical_representation)
+    r2_time_shuffle, *_ = fun_trial_matched_metrics(z2_time_shuffle, z2, batch_size, biophysical_representation)
+    r2_neuro_suffle, *_ = fun_trial_matched_metrics(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
-    FID = frechenet_distance(z1, z2, 64, biophysical_representation,)
-    FID_time_shuffle = frechenet_distance(z2_time_shuffle, z2, 64, biophysical_representation)
-    FID_neuron_shuffle = frechenet_distance(z2_neuro_shuffle, z2, 64, biophysical_representation)
+    FID = frechenet_distance(z1, z2, batch_size, biophysical_representation)
+    FID_time_shuffle = frechenet_distance(z2_time_shuffle, z2, batch_size, biophysical_representation)
+    FID_neuron_shuffle = frechenet_distance(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
     print("r2_ref", r2_ref)
     print("r2_time_shuffle", r2_time_shuffle)
