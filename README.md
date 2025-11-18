@@ -28,6 +28,9 @@ import torch.nn as nn
 
 class Agent:
     def __init__(self):
+        # Define latent dimension (must match environment: 4)
+        self.latent_dim = 4
+
         # Load your pre-trained encoder/decoder
         self.encoder = torch.load('encoder.pt')
         self.decoder = torch.load('decoder.pt')
@@ -45,7 +48,7 @@ class Agent:
             X: Neural activity (n_trials, n_neurons)
 
         Returns:
-            Latent embeddings (n_trials, latent_dim)
+            Latent embeddings (n_trials, 4) - fixed latent dimension
         """
         X_tensor = torch.FloatTensor(X)
 
@@ -59,7 +62,7 @@ class Agent:
         Decode latent representation to neural activity
 
         Args:
-            z: Latent embeddings (n_samples, latent_dim)
+            z: Latent embeddings (n_samples, 4) - fixed latent dimension
 
         Returns:
             Neural activity (n_samples, n_neurons)
@@ -124,6 +127,7 @@ if task:
 
 - **Source:** Allen Institute Neuropixels (VISp, session 791319847)
 - **Format:** `(n_trials, n_neurons)` - 40 neurons, ~140 trials
+- **Latent Dimension:** Fixed at 4 (agents must encode to 4D space)
 - **Task:** Learn to model the statistical structure of neural population activity
 
 ## Tips for Success

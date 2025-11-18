@@ -30,7 +30,8 @@ class NeuralActivityEnv:
         self,
         batch_size: int = 100,
         dataset_path: Optional[str] = None,
-        dataset: Optional[Dict[str, Any]] = None
+        dataset: Optional[Dict[str, Any]] = None,
+        latent_dim: int = 4
     ):
         """
         Initialize the neural activity environment
@@ -39,8 +40,10 @@ class NeuralActivityEnv:
             batch_size: Number of trials to use for evaluation
             dataset_path: Optional path to custom dataset .npz file
             dataset: Optional pre-loaded dataset dictionary with 'z_test' key
+            latent_dim: Dimension of the latent embedding space (default: 4)
         """
         self.batch_size = batch_size
+        self.latent_dim = latent_dim
         self.current_batch = 0
         self.rng = np.random.RandomState()
 
@@ -88,8 +91,8 @@ class NeuralActivityEnv:
         if self.n_trials == 0:
             raise RuntimeError("Dataset is empty")
 
-        # We only have one task per simulation (evaluate the entire dataset)
-        self.num_batches = 1
+        # Calculate total number of batches (ceiling division to ensure all data is used)
+        self.num_batches = (self.n_trials + self.batch_size - 1) // self.batch_size
 
         # Track current task data
         self.current_test_data = None
@@ -102,22 +105,24 @@ class NeuralActivityEnv:
         """
         Get the next evaluation task
 
+        The dataset is split into batches of size batch_size.
+        This method returns batches sequentially, ensuring all data is evaluated exactly once.
+
         Returns:
             Dictionary with:
-                - X: Neural activity data for encoding (n_trials, n_neurons)
-                - Z: Latent representations to decode for generation (n_trials, n_neurons)
+                - X: Neural activity data for encoding (batch_size, n_neurons)
+                - Z: Random latent codes to decode for generation (batch_size, latent_dim)
             Returns None when all batches are complete
         """
         if self.current_batch >= self.num_batches:
             return None
 
-        # Use all data or a batch
-        if self.batch_size >= self.n_trials:
-            test_data = self.z_data
-        else:
-            # Sample batch_size trials
-            indices = self.rng.choice(self.n_trials, size=self.batch_size, replace=False)
-            test_data = self.z_data[indices]
+        # Calculate batch boundaries
+        start_idx = self.current_batch * self.batch_size
+        end_idx = min(start_idx + self.batch_size, self.n_trials)
+
+        # Extract this batch of data
+        test_data = self.z_data[start_idx:end_idx]
 
         # Store for evaluation
         self.current_test_data = test_data
@@ -126,11 +131,16 @@ class NeuralActivityEnv:
 
         # For encode/decode workflow:
         # X = neural activity to encode -> Z_pred -> Y_pred (reconstruction)
-        # Z = latent codes to decode -> Y_gen (generation)
-        # For simplicity, we use the same data for both tasks
+        # Z = random latent codes to decode -> Y_gen (generation)
+
+        # Generate random latent codes from standard normal distribution
+        # Shape: (n_trials_in_batch, latent_dim)
+        n_trials = test_data.shape[0]
+        Z_latents = self.rng.randn(n_trials, self.latent_dim).astype(np.float32)
+
         return {
-            'X': test_data,  # Neural activity to encode/decode
-            'Z': test_data   # Latent representations to decode for generation
+            'X': test_data,      # Neural activity to encode (batch_size, n_neurons)
+            'Z': Z_latents       # Random latent codes to decode (batch_size, latent_dim=4)
         }
 
     def evaluate(self, Z_pred: np.ndarray, Y_pred: np.ndarray, Y_gen: np.ndarray, d: int = 10) -> tuple:
@@ -192,20 +202,15 @@ class NeuralActivityEnv:
         Y_gen_repr = biophysical_representation(Y_gen, d=d)
 
         try:
-            # Use a subset for FID computation if datasets are large
-            fid_batch_size = min(self.batch_size, len(X_test_repr_fid), len(Y_gen_repr))
-
-            Y_gen_sample = Y_gen_repr[:fid_batch_size]
-            X_real_sample = X_test_repr_fid[:fid_batch_size]
-
+            # Use all data in the current batch (no subsampling)
             # Compute statistics in biophysical representation space
-            mu_gen = np.mean(Y_gen_sample, axis=0)
-            mu_real = np.mean(X_real_sample, axis=0)
+            mu_gen = np.mean(Y_gen_repr, axis=0)
+            mu_real = np.mean(X_test_repr_fid, axis=0)
 
             # Add strong regularization to ensure positive definiteness
             eps = 1e-3
-            sigma_gen = np.cov(Y_gen_sample, rowvar=False) + np.eye(d) * eps
-            sigma_real = np.cov(X_real_sample, rowvar=False) + np.eye(d) * eps
+            sigma_gen = np.cov(Y_gen_repr, rowvar=False) + np.eye(d) * eps
+            sigma_real = np.cov(X_test_repr_fid, rowvar=False) + np.eye(d) * eps
 
             fid_distance = calculate_frechet_distance(mu_gen, sigma_gen, mu_real, sigma_real)
 

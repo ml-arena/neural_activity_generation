@@ -359,9 +359,9 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 # if run as main:
 if __name__ == "__main__":
     X = np.load("../data/neural_data.npz")
-    #print(X["z_test"].shape)
-    batch_size = 64
-
+    
+    # Use equal-sized batches
+    batch_size = 64  # Ensure we have enough data for both batches
     z1 = X["z_test"][:batch_size]
     z2 = X["z_test"][batch_size:2*batch_size]
 
@@ -372,7 +372,8 @@ if __name__ == "__main__":
     r2_time_shuffle, *_ = fun_trial_matched_metrics(z2_time_shuffle, z2, batch_size, biophysical_representation)
     r2_neuro_suffle, *_ = fun_trial_matched_metrics(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
-    FID = frechenet_distance(z1, z2, batch_size, biophysical_representation,)
+    FID = frechenet_distance(z1, z2, batch_size, biophysical_representation)
+
     FID_time_shuffle = frechenet_distance(z2_time_shuffle, z2, batch_size, biophysical_representation)
     FID_neuron_shuffle = frechenet_distance(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
