@@ -359,7 +359,7 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 # if run as main:
 if __name__ == "__main__":
     X = np.load("../data/neural_data.npz")
-    
+
     # Use equal-sized batches
     batch_size = 64  # Ensure we have enough data for both batches
     z1 = X["z_test"][:batch_size]

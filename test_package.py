@@ -6,6 +6,7 @@ This tests the environment and naive agent to ensure everything works correctly.
 import numpy as np
 import sys
 import os
+from test_lstm_agent import MyAgent
 
 # Add package to path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -64,6 +65,41 @@ def test_agent(env, task):
 
     return agent, predictions
 
+def test_lstm_agent(env, task):
+    # Submit the agent here to compete with your peers
+    # https://ml-arena.com/viewcompetition/20
+    # In the agent.py of the competition: Copy-paste the following 3 part
+    # 1) Copy-paste imports and constants (T=200, d_latent=4, ...)
+
+    # 2) Copy-paste your VAE class and related objet (ResLstm, Vec2Spikes, VAE)
+
+    # 3) Copy-paste the Agent class with the competition API
+
+
+    # End of copy-paste, small test below:
+    competitionAgent = MyAgent()
+
+    # Get predictions
+    X_test = task['X_test']
+    latent = competitionAgent.encode(X_test)
+    latent_gen = np.random.randn((latent.shape))
+
+    X_recon = competitionAgent.decode(latent)
+    X_gen = competitionAgent.decode(latent_gen)
+
+    predictions = {
+        'reconstructed': X_recon,
+        'generated': X_gen
+    }
+
+
+    assert isinstance(predictions, dict), "Predictions should be a dictionary"
+    assert 'reconstructed' in predictions, "Should have reconstructed"
+    assert 'generated' in predictions, "Should have generated"
+    print(f"✓ Got predictions:")
+    print(f"  - Reconstructed shape: {predictions['reconstructed'].shape}")
+    print(f"  - Generated shape: {predictions['generated'].shape}")
+
 
 def test_evaluation(env, task, predictions):
     """Test evaluation"""
@@ -96,7 +132,7 @@ def test_full_workflow():
 
     # Create environment and agent
     env = NeuralActivityEnv(batch_size=50)
-    agent = Agent()
+    agent = MyAgent()
     env.reset()
 
     scores = []
@@ -112,13 +148,19 @@ def test_full_workflow():
         print(f"\nTask {task_count}:")
 
         # Get predictions
-        predictions = agent.predict(task['X_test'])
+        #predictions = agent.predict(task['X_test'])
+
+        latent = agent.encode(task['X_test'])
+        latent_gen = np.random.randn((latent.shape))
+
+        X_recon = agent.decode(latent)
+        X_gen = agent.decode(latent_gen)
 
         # Evaluate
         score = env.evaluate(
             X_test=task['y_test'],
-            X_pred=predictions['reconstructed'],
-            X_generated=predictions['generated']
+            X_pred=X_recon,
+            X_generated=X_gen
         )
         scores.append(score)
 
