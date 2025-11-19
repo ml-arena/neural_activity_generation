@@ -10,7 +10,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy import linalg
 
-def feature_oscillation_frequency(X, f_min=1, f_max=60, num_f=24 * 4, n_group=3):
+def feature_oscillation_frequency(X, f_min=0.5, f_max=50, num_f=33 * 4, n_group=3):
     B, T, d = X.shape
 
     X_mean = X.mean(1) # dim: B x d
@@ -18,8 +18,9 @@ def feature_oscillation_frequency(X, f_min=1, f_max=60, num_f=24 * 4, n_group=3)
     dt = 0.01
 
     coeff = (f_max/f_min)**(1/(num_f - 1))
-    #freqs = torch.linspace(f_min, f_max, num_f, device=X.device)
+    #freqs = np.linspace(f_min, f_max, num_f, device=X.device)
     freqs = f_min * np.power(coeff, np.arange(num_f))
+    #print(freqs)
     assert freqs[0] == f_min
     assert (freqs[-1] - f_max) / f_max < 1e-4, f"f_max={freqs[-1]} and not f_max={f_max}"
     time_line = np.arange(T) * dt
@@ -118,10 +119,10 @@ def biophysical_representation(X, normalize=True):
     features = feature_oscillation_frequency(X_pop)
 
     if normalize:
-        mean= [0.0042, 0.0033, 0.0021, 0.0501, 0.0036, 0.003, 0.0023, 0.0624, 0.002, 0.0018, 0.0018, 0.0446, 0.0039, 0.0034, 0.0028, 0.0746, 0.005, 0.0037, 0.0024, 0.0635, 0.0049, 0.0049, 0.0024, 0.0737, 0.0063, 0.0051, 0.0048, 0.1103, 0.0072, 0.0061, 0.0034, 0.1315, 0.0053, 0.0044, 0.0031, 0.1343, 0.0083, 0.006, 0.004, 0.1496, 0.0053, 0.0043, 0.0034, 0.1098]
+        #mean= [0.0042, 0.0033, 0.0021, 0.0501, 0.0036, 0.003, 0.0023, 0.0624, 0.002, 0.0018, 0.0018, 0.0446, 0.0039, 0.0034, 0.0028, 0.0746, 0.005, 0.0037, 0.0024, 0.0635, 0.0049, 0.0049, 0.0024, 0.0737, 0.0063, 0.0051, 0.0048, 0.1103, 0.0072, 0.0061, 0.0034, 0.1315, 0.0053, 0.0044, 0.0031, 0.1343, 0.0083, 0.006, 0.004, 0.1496, 0.0053, 0.0043, 0.0034, 0.1098]
 
-        std= [0.0018, 0.0012, 0.0005, 0.0162, 0.0015, 0.0008, 0.0003, 0.0179, 0.0007, 0.0004, 0.0002, 0.0091, 0.0014, 0.0011, 0.0004, 0.0152, 0.0021, 0.0011, 0.0005, 0.0175, 0.0024, 0.0014, 0.0005, 0.0188, 0.003, 0.0011, 0.0008, 0.0388, 0.0036, 0.0014, 0.0007, 0.0404, 0.0024, 0.0012, 0.0005, 0.0373, 0.0039, 0.0018, 0.0007, 0.0465, 0.003, 0.0016, 0.0007, 0.0279]
-
+        #std= [0.0018, 0.0012, 0.0005, 0.0162, 0.0015, 0.0008, 0.0003, 0.0179, 0.0007, 0.0004, 0.0002, 0.0091, 0.0014, 0.0011, 0.0004, 0.0152, 0.0021, 0.0011, 0.0005, 0.0175, 0.0024, 0.0014, 0.0005, 0.0188, 0.003, 0.0011, 0.0008, 0.0388, 0.0036, 0.0014, 0.0007, 0.0404, 0.0024, 0.0012, 0.0005, 0.0373, 0.0039, 0.0018, 0.0007, 0.0465, 0.003, 0.0016, 0.0007, 0.0279]
+        mean, std = dataset_mean_and_std()
         features = (features - mean) / std
 
     # Flatten all dimensions except batch
@@ -331,13 +332,25 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 
     return r2, ind_x, ind_y
 
+def dataset_mean_and_std(data=None):
+    if data is None:
+        try:
+            data = np.load("neural_activity/data/neural_data.npz")
+        except:
+            data = np.load("../data/neural_data.npz")
+
+    X = biophysical_representation(data["z_test"], normalize=False)
+    mean = X.mean(0)
+    std = X.std(0)
+    return mean, std
+
 
 # if run as main:
 if __name__ == "__main__":
     data = np.load("../data/neural_data.npz")
 
     # Use equal-sized batches
-    batch_size = 64  # Ensure we have enough data for both batches
+    batch_size = 96  # Ensure we have enough data for both batches
     z1 = data["z_test"][:batch_size]
     z2 = data["z_test"][batch_size:2*batch_size]
 

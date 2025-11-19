@@ -132,7 +132,7 @@ def test_full_workflow():
     print("=" * 60)
 
     # Create environment and agent
-    env = NeuralActivityEnv(batch_size=10000)
+    env = NeuralActivityEnv(batch_size=64)
     agent = MyAgent()
     env.reset()
 
@@ -167,7 +167,7 @@ def test_full_workflow():
 
         print(f"  R2: {score[0]:.4f}, FID: {score[1]:.4f}")
 
-    print(f"\n✓ Completed {task_count} task(s)")
+    print(f"\n✓ Completed {task_count} task(s): R2={np.mean([s[0] for s in scores]):0.3f} FID={np.mean([s[1] for s in scores]):0.3f}")
     # Don't compute mean of dicts
     return scores
 

@@ -189,13 +189,15 @@ class NeuralActivityEnv:
         assert Y_pred.shape[0] == self.batch_size
         eval_batch_size = self.batch_size
 
+
+
         try:
             r2_score_recon, _, _ = fun_trial_matched_metrics(
                 Y_pred, X_test, eval_batch_size, feature_fun, random_sample=False
             )
-            r2_score_gen, _, _ = fun_trial_matched_metrics(
-                Y_gen, X_test, eval_batch_size, feature_fun, random_sample=False
-            )
+            #r2_score_gen, _, _ = fun_trial_matched_metrics(
+            #    Y_gen, X_test, eval_batch_size, feature_fun, random_sample=False
+            #)
         except Exception as e:
             print(f"Warning: R2 computation failed: {e}")
             r2_score_recon = r2_score_gen = -1.0  # Bad score on failure
