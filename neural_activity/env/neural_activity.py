@@ -13,7 +13,8 @@ import numpy as np
 import os
 from typing import Optional, Dict, Any
 from neural_activity import PKG_DIR
-from neural_activity.utils import calculate_frechet_distance, fun_trial_matched_metrics, biophysical_representation
+from neural_activity.utils import calculate_frechet_distance, fun_trial_matched_metrics, biophysical_representation, \
+    fun_frechnet_distance
 
 
 class NeuralActivityEnv:
@@ -42,7 +43,6 @@ class NeuralActivityEnv:
             dataset: Optional pre-loaded dataset dictionary with 'z_test' key
             latent_dim: Dimension of the latent embedding space (default: 4)
         """
-        self.batch_size = batch_size
         self.latent_dim = latent_dim
         self.current_batch = 0
         self.rng = np.random.RandomState()
@@ -92,7 +92,8 @@ class NeuralActivityEnv:
             raise RuntimeError("Dataset is empty")
 
         # Calculate total number of batches (ceiling division to ensure all data is used)
-        self.num_batches = (self.n_trials + self.batch_size - 1) // self.batch_size
+        self.batch_size = min(batch_size, self.n_trials)
+        self.num_batches = self.n_trials // self.batch_size #(self.n_trials + self.batch_size - 1) // self.batch_size
 
         # Track current task data
         self.current_test_data = None
@@ -143,7 +144,7 @@ class NeuralActivityEnv:
             'Z': Z_latents       # Random latent codes to decode (batch_size, latent_dim=4)
         }
 
-    def evaluate(self, Z_pred: np.ndarray, Y_pred: np.ndarray, Y_gen: np.ndarray, d: int = 10) -> tuple:
+    def evaluate(self, Z_pred: np.ndarray, Y_pred: np.ndarray, Y_gen: np.ndarray) -> tuple:
         """
         Evaluate agent performance on reconstruction and generation
 
@@ -180,48 +181,38 @@ class NeuralActivityEnv:
 
         # Task 1: Reconstruction quality (R2 via trial-matched metrics)
         # Apply biophysical representation
-        X_test_repr = biophysical_representation(X_test, d=d)
-        Y_pred_repr = biophysical_representation(Y_pred, d=d)
 
         # Use biophysical representation as feature
-        feature_fun = lambda x: biophysical_representation(x, d=d)
+        feature_fun = lambda x: biophysical_representation(x)
 
-        eval_batch_size = min(self.batch_size, len(X_test), len(Y_pred))
+        assert X_test.shape[0] == self.batch_size
+        assert Y_pred.shape[0] == self.batch_size
+        eval_batch_size = self.batch_size
 
         try:
-            r2_score, _, _ = fun_trial_matched_metrics(
+            r2_score_recon, _, _ = fun_trial_matched_metrics(
                 Y_pred, X_test, eval_batch_size, feature_fun, random_sample=False
+            )
+            r2_score_gen, _, _ = fun_trial_matched_metrics(
+                Y_gen, X_test, eval_batch_size, feature_fun, random_sample=False
             )
         except Exception as e:
             print(f"Warning: R2 computation failed: {e}")
-            r2_score = -1.0  # Bad score on failure
+            r2_score_recon = r2_score_gen = -1.0  # Bad score on failure
 
-        # Task 2: Generation quality (Frechet Distance)
-        # Apply biophysical representation to both real and generated
-        X_test_repr_fid = biophysical_representation(X_test, d=d)
-        Y_gen_repr = biophysical_representation(Y_gen, d=d)
 
         try:
-            # Use all data in the current batch (no subsampling)
-            # Compute statistics in biophysical representation space
-            mu_gen = np.mean(Y_gen_repr, axis=0)
-            mu_real = np.mean(X_test_repr_fid, axis=0)
-
-            # Add strong regularization to ensure positive definiteness
-            eps = 1e-3
-            sigma_gen = np.cov(Y_gen_repr, rowvar=False) + np.eye(d) * eps
-            sigma_real = np.cov(X_test_repr_fid, rowvar=False) + np.eye(d) * eps
-
-            fid_distance = calculate_frechet_distance(mu_gen, sigma_gen, mu_real, sigma_real)
+            FID_gen = fun_frechnet_distance(Y_gen, X_test, eval_batch_size, biophysical_representation)
+            #FID_recon = fun_frechnet_distance(Y_pred, X_test, eval_batch_size, biophysical_representation)
 
         except Exception as e:
             print(f"Warning: FID computation failed: {e}")
-            fid_distance = float('inf')  # Bad score on failure
+            FID_gen = FID_recon = float('inf')  # Bad score on failure
 
         # Return both metrics as tuple (metric, metric2)
         # metric = reconstruction quality (higher is better)
         # metric2 = generation quality via Frechet distance (lower is better)
-        return (float(r2_score), float(fid_distance))
+        return (float(r2_score_recon), float(FID_gen))
 
     def reset(self):
         """Reset environment to start from first batch"""

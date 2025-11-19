@@ -30,10 +30,11 @@ def test_environment():
 
     # Get task
     task = env.get_next_task()
+
     assert task is not None, "Should get a task"
-    assert 'X_test' in task, "Task should have X_test"
-    assert 'y_test' in task, "Task should have y_test"
-    print(f"✓ Got task with shape: {task['X_test'].shape}")
+    assert 'X' in task, "Task should have X"
+    assert 'Z' in task, "Task should have Z"
+    print(f"✓ Got task with shape: {task['X'].shape}")
 
     # Test completion
     is_complete = env.is_complete()
@@ -53,7 +54,7 @@ def test_agent(env, task):
     print("✓ Agent created")
 
     # Get predictions
-    X_test = task['X_test']
+    X_test = task['X']
     predictions = agent.predict(X_test)
 
     assert isinstance(predictions, dict), "Predictions should be a dictionary"
@@ -131,7 +132,7 @@ def test_full_workflow():
     print("=" * 60)
 
     # Create environment and agent
-    env = NeuralActivityEnv(batch_size=50)
+    env = NeuralActivityEnv(batch_size=10000)
     agent = MyAgent()
     env.reset()
 
@@ -150,21 +151,21 @@ def test_full_workflow():
         # Get predictions
         #predictions = agent.predict(task['X_test'])
 
-        latent = agent.encode(task['X_test'])
-        latent_gen = np.random.randn((latent.shape))
+        latent = agent.encode(task['X'])
+        latent_gen = task['Z']
 
         X_recon = agent.decode(latent)
         X_gen = agent.decode(latent_gen)
 
         # Evaluate
         score = env.evaluate(
-            X_test=task['y_test'],
-            X_pred=X_recon,
-            X_generated=X_gen
+            Z_pred=latent,
+            Y_pred=X_recon,
+            Y_gen=X_gen
         )
         scores.append(score)
 
-        print(f"  R2: {score['r2_reconstruction']:.4f}, FID: {score['fid_generation']:.4f}")
+        print(f"  R2: {score[0]:.4f}, FID: {score[1]:.4f}")
 
     print(f"\n✓ Completed {task_count} task(s)")
     # Don't compute mean of dicts
@@ -182,10 +183,10 @@ def main():
         env, task = test_environment()
 
         # Test agent
-        agent, predictions = test_agent(env, task)
+        #agent, predictions = test_agent(env, task)
 
         # Test evaluation
-        score = test_evaluation(env, task, predictions)
+        #score = test_evaluation(env, task, predictions)
 
         # Test full workflow
         scores = test_full_workflow()

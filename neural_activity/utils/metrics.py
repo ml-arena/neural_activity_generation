@@ -36,7 +36,7 @@ def feature_oscillation_frequency(X, f_min=1, f_max=60, num_f=24 * 4, n_group=3)
     return Z.reshape(B,-1)
 
 
-def biophysical_representation(X, d=44):
+def biophysical_representation(X, normalize=True):
     """
     Placeholder for biophysical representation function.
 
@@ -117,45 +117,21 @@ def biophysical_representation(X, d=44):
 
     features = feature_oscillation_frequency(X_pop)
 
-    mean = [0.007493038978825583, 0.006188965265658296, 0.0033996874166164876, 0.13326093912697756,
-            0.005309828973749758, 0.004386166904613503, 0.003135768586185195, 0.1355213299035453, 0.008273224234805993,
-            0.005882099905739658, 0.003944514628592391, 0.1498666848235119, 0.0050968081539511795, 0.00426537036677928,
-            0.0033583538223481454, 0.10759957018308342, 0.004047143881469345, 0.003313604162483522,
-            0.0020721883451692495, 0.0513864443413555, 0.003534838787123739, 0.0029419596950311425,
-            0.002253350744961822, 0.0628730244218157, 0.0020020638352171846, 0.0017451231818242667,
-            0.0017633020100120368, 0.04493302144916155, 0.003714414183267803, 0.0033963448830224693,
-            0.002704872073448307, 0.07480258582374798, 0.0048969299287962825, 0.0036697171426024328,
-            0.00240008502302478, 0.0632197361287231, 0.005216566446942649, 0.0050268806212947536, 0.0023682040914292835,
-            0.07384109118272765, 0.006451141021989669, 0.005141380296848104, 0.004661068152978503, 0.11013223917689174]
-    std = [0.003337981640928058, 0.0014485959865033072, 0.0006629992628133522, 0.04353357117988084, 0.00220869806232434,
-           0.0012509588870063264, 0.0005599584947354162, 0.03670388538437049, 0.0035868542445673685,
-           0.0015462488213319517, 0.0006468910855799661, 0.046953687174648574, 0.0026396524226909544,
-           0.0016174178893506672, 0.0006506063693847731, 0.026789438489127956, 0.001843557389752658,
-           0.0012648685642927377, 0.000527292807185672, 0.01776162599156649, 0.0014380985519969198,
-           0.0008145630829930258, 0.0003273449296476627, 0.01778245330382677, 0.0006438547486064265,
-           0.00034559364962388035, 0.000214904938162137, 0.00903533956194234, 0.0013288372340525142,
-           0.0010872812322061942, 0.00036805728109846035, 0.014534174817326528, 0.0019871454657919064,
-           0.0011060930071134778, 0.00042774321642716174, 0.016677981284852254, 0.0023369832147116876,
-           0.0014563195873061193, 0.0004650926409213801, 0.01977637728311928, 0.0028705178117713367,
-           0.0010643402656023296, 0.000772352264328995, 0.041381843089760985]
+    if normalize:
+        mean= [0.0042, 0.0033, 0.0021, 0.0501, 0.0036, 0.003, 0.0023, 0.0624, 0.002, 0.0018, 0.0018, 0.0446, 0.0039, 0.0034, 0.0028, 0.0746, 0.005, 0.0037, 0.0024, 0.0635, 0.0049, 0.0049, 0.0024, 0.0737, 0.0063, 0.0051, 0.0048, 0.1103, 0.0072, 0.0061, 0.0034, 0.1315, 0.0053, 0.0044, 0.0031, 0.1343, 0.0083, 0.006, 0.004, 0.1496, 0.0053, 0.0043, 0.0034, 0.1098]
 
-    features = (features - mean) / std
+        std= [0.0018, 0.0012, 0.0005, 0.0162, 0.0015, 0.0008, 0.0003, 0.0179, 0.0007, 0.0004, 0.0002, 0.0091, 0.0014, 0.0011, 0.0004, 0.0152, 0.0021, 0.0011, 0.0005, 0.0175, 0.0024, 0.0014, 0.0005, 0.0188, 0.003, 0.0011, 0.0008, 0.0388, 0.0036, 0.0014, 0.0007, 0.0404, 0.0024, 0.0012, 0.0005, 0.0373, 0.0039, 0.0018, 0.0007, 0.0465, 0.003, 0.0016, 0.0007, 0.0279]
+
+        features = (features - mean) / std
 
     # Flatten all dimensions except batch
     X = np.asarray(features)
     batch_size = X.shape[0]
     X_flat = X.reshape(batch_size, -1)
 
-    # Simple projection to dimension d (placeholder)
-    # Later this will compute actual biophysical features
-    n_features = X_flat.shape[1]
+    return X_flat
 
-    if n_features >= d:
-        # Take first d features
-        return X_flat[:, :d]
-    else:
-        # Pad with zeros if needed
-        return np.pad(X_flat, ((0, 0), (0, d - n_features)), mode='constant')
+
 
 
 def resample(data, n_samples, replace=False):
@@ -256,7 +232,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2):
     return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
 
 
-def frechenet_distance(z_simulated, z_data, batch_size, feature_fun, random_sample=False):
+def fun_frechnet_distance(z_simulated, z_data, batch_size, feature_fun, random_sample=False):
     z_simulated =  resample(z_simulated, batch_size) if random_sample else z_simulated[:batch_size]
     z_data =  resample(z_data, batch_size) if random_sample else z_data[:batch_size]
 
@@ -358,12 +334,19 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 
 # if run as main:
 if __name__ == "__main__":
-    X = np.load("../data/neural_data.npz")
+    data = np.load("../data/neural_data.npz")
 
     # Use equal-sized batches
     batch_size = 64  # Ensure we have enough data for both batches
-    z1 = X["z_test"][:batch_size]
-    z2 = X["z_test"][batch_size:2*batch_size]
+    z1 = data["z_test"][:batch_size]
+    z2 = data["z_test"][batch_size:2*batch_size]
+
+    X = biophysical_representation(data["z_test"], normalize=False)
+    mean = X.mean(0)
+    std = X.std(0)
+
+    print("mean=", [float(f"{x:0.4f}") for x in mean])
+    print("std=", [float(f"{x:0.4f}") for x in std])
 
     z2_time_shuffle = z2[:, np.random.permutation(z2.shape[1])]
     z2_neuro_shuffle = z2[:, :, np.random.permutation(z2.shape[2])]
@@ -372,10 +355,10 @@ if __name__ == "__main__":
     r2_time_shuffle, *_ = fun_trial_matched_metrics(z2_time_shuffle, z2, batch_size, biophysical_representation)
     r2_neuro_suffle, *_ = fun_trial_matched_metrics(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
-    FID = frechenet_distance(z1, z2, batch_size, biophysical_representation)
+    FID = fun_frechnet_distance(z1, z2, batch_size, biophysical_representation)
 
-    FID_time_shuffle = frechenet_distance(z2_time_shuffle, z2, batch_size, biophysical_representation)
-    FID_neuron_shuffle = frechenet_distance(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
+    FID_time_shuffle = fun_frechnet_distance(z2_time_shuffle, z2, batch_size, biophysical_representation)
+    FID_neuron_shuffle = fun_frechnet_distance(z2_neuro_shuffle, z2, batch_size, biophysical_representation)
 
     print("r2_ref", r2_ref)
     print("r2_time_shuffle", r2_time_shuffle)
