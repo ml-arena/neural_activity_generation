@@ -37,7 +37,7 @@ def feature_oscillation_frequency(X, f_min=0.5, f_max=50, num_f=33 * 4, n_group=
     return Z.reshape(B,-1)
 
 
-def biophysical_representation(X, normalize=True):
+def biophysical_representation(X, normalize=True, mean_std=None):
     """
     Placeholder for biophysical representation function.
 
@@ -120,9 +120,12 @@ def biophysical_representation(X, normalize=True):
 
     if normalize:
         #mean= [0.0042, 0.0033, 0.0021, 0.0501, 0.0036, 0.003, 0.0023, 0.0624, 0.002, 0.0018, 0.0018, 0.0446, 0.0039, 0.0034, 0.0028, 0.0746, 0.005, 0.0037, 0.0024, 0.0635, 0.0049, 0.0049, 0.0024, 0.0737, 0.0063, 0.0051, 0.0048, 0.1103, 0.0072, 0.0061, 0.0034, 0.1315, 0.0053, 0.0044, 0.0031, 0.1343, 0.0083, 0.006, 0.004, 0.1496, 0.0053, 0.0043, 0.0034, 0.1098]
-
         #std= [0.0018, 0.0012, 0.0005, 0.0162, 0.0015, 0.0008, 0.0003, 0.0179, 0.0007, 0.0004, 0.0002, 0.0091, 0.0014, 0.0011, 0.0004, 0.0152, 0.0021, 0.0011, 0.0005, 0.0175, 0.0024, 0.0014, 0.0005, 0.0188, 0.003, 0.0011, 0.0008, 0.0388, 0.0036, 0.0014, 0.0007, 0.0404, 0.0024, 0.0012, 0.0005, 0.0373, 0.0039, 0.0018, 0.0007, 0.0465, 0.003, 0.0016, 0.0007, 0.0279]
-        mean, std = dataset_mean_and_std()
+        if mean_std is None:
+            mean, std = dataset_mean_and_std()
+        else:
+            mean, std = mean_std
+
         features = (features - mean) / std
 
     # Flatten all dimensions except batch
@@ -334,10 +337,7 @@ def fun_trial_matched_metrics(z_simulated, z_data, batch_size, feature_fun, rand
 
 def dataset_mean_and_std(data=None):
     if data is None:
-        try:
-            data = np.load("neural_activity/data/neural_data.npz")
-        except:
-            data = np.load("../data/neural_data.npz")
+        data = np.load("../data/neural_data.npz")
 
     X = biophysical_representation(data["z_test"], normalize=False)
     mean = X.mean(0)

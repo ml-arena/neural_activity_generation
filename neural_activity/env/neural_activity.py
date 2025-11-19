@@ -183,7 +183,11 @@ class NeuralActivityEnv:
         # Apply biophysical representation
 
         # Use biophysical representation as feature
-        feature_fun = lambda x: biophysical_representation(x)
+
+        X_data = biophysical_representation(self.z_data, normalize=False)
+        mean = X_data.mean(0)
+        std = X_data.std(0)
+        feature_fun = lambda x: biophysical_representation(x, normalize=True, mean_std=(mean, std))
 
         assert X_test.shape[0] == self.batch_size
         assert Y_pred.shape[0] == self.batch_size
@@ -204,7 +208,7 @@ class NeuralActivityEnv:
 
 
         try:
-            FID_gen = fun_frechnet_distance(Y_gen, X_test, eval_batch_size, biophysical_representation)
+            FID_gen = fun_frechnet_distance(Y_gen, X_test, eval_batch_size, feature_fun)
             #FID_recon = fun_frechnet_distance(Y_pred, X_test, eval_batch_size, biophysical_representation)
 
         except Exception as e:
